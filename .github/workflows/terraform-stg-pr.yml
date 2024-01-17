@@ -1,0 +1,47 @@
+name: terraform_stg_pr
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+    - master
+    paths:
+      - environments/stg/**
+
+jobs:
+  STG:
+    name: Deploy to Stg
+    runs-on: ubuntu-latest
+    environment: stg
+    env: 
+      ENVIRONMENT: stg
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ap-southeast-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Setup 
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.5"
+
+      - name: terraform fmt
+        id: fmt
+        run: terraform fmt -check
+        continue-on-error: true
+
+      - name: Terraform init
+        id: init
+        working-directory: ./environments/$ENVIRONMENT
+        run: terraform init
+
+      - name: Terraform plan
+        id: plan
+        working-directory: ./environments/$ENVIRONMENT
+        run: terraform plan
