@@ -4,17 +4,15 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-    - master
+      - main
     paths:
-      - environments/dev/**
+      - 'environments/dev/**'
 
 jobs:
   DEV:
     name: Deploy to Dev
     runs-on: ubuntu-latest
     environment: dev
-    env: 
-      ENVIRONMENT: dev
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -29,19 +27,50 @@ jobs:
       - name: Terraform Setup 
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.6.5"
+          terraform_version: 1.6.5
 
       - name: terraform fmt
         id: fmt
-        run: terraform fmt -check
+        run: terraform fmt -check -recursive
         continue-on-error: true
+
+      - name: Post Format
+        if: always() && github.ref != 'refs/heads/main' && (steps.fmt.outcome == 'success' || steps.fmt.outcome == 'failure')
+        uses: GetTerminus/terraform-pr-commenter@v3
+        with:
+          commenter_type: fmt
+          commenter_input: ${{ format('{0}{1}', steps.fmt.outputs.stdout, steps.fmt.outputs.stderr) }}
+          commenter_exitcode: ${{ steps.fmt.outputs.exitcode }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       - name: Terraform init
         id: init
-        working-directory: ./environments/$ENVIRONMENT
+        working-directory: ./environments/${{ vars.ENVIRONMENT }}
         run: terraform init
+
+      - name: Post Init
+        if: always() && github.ref != 'refs/heads/main' && (steps.init.outcome == 'success' || steps.init.outcome == 'failure')
+        uses: GetTerminus/terraform-pr-commenter@v3
+        with:
+          commenter_type: init
+          commenter_input: ${{ format('{0}{1}', steps.init.outputs.stdout, steps.init.outputs.stderr) }}
+          commenter_exitcode: ${{ steps.init.outputs.exitcode }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Terraform plan
         id: plan
-        working-directory: ./environments/$ENVIRONMENT
+        working-directory: ./environments/${{ vars.ENVIRONMENT }}
         run: terraform plan
+
+      - name: Post Plan
+        if: always() && github.ref != 'refs/heads/main' && (steps.plan.outcome == 'success' || steps.plan.outcome == 'failure')
+        uses: GetTerminus/terraform-pr-commenter@v3
+        with:
+          commenter_type: plan
+          commenter_input: ${{ format('{0}{1}', steps.plan.outputs.stdout, steps.plan.outputs.stderr) }}
+          commenter_exitcode: ${{ steps.init.outputs.exitcode }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
