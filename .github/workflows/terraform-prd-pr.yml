@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-    - master
+      - main
     paths:
-      - environments/prd/**
+      - 'environments/prd/**'
 
 jobs:
   PRD:
@@ -38,10 +38,10 @@ jobs:
 
       - name: Terraform init
         id: init
-        working-directory: ./environments/$ENVIRONMENT
+        working-directory: ./environments/${{ vars.ENVIRONMENT }}
         run: terraform init
 
       - name: Terraform plan
         id: plan
-        working-directory: ./environments/$ENVIRONMENT
+        working-directory: ./environments/${{ vars.ENVIRONMENT }}
         run: terraform plan
